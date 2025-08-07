@@ -1,0 +1,45 @@
+from flask import Flask, request, render_template_string
+import requests
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+API_KEY = os.getenv("OPENWEATHER_API_KEY")
+
+app = Flask(__name__)
+
+HTML = """
+<!doctype html>
+<title>Weather Chatbot</title>
+<h2>Ask for the weather in any major city:</h2>
+<form method="post">
+  City: <input name="city">
+  <input type="submit">
+</form>
+{% if weather %}
+  <p>{{ weather }}</p>
+{% endif %}
+"""
+
+def get_weather(city):
+    url = "http://api.openweathermap.org/data/2.5/weather"
+    params = {"q": city, "appid": API_KEY, "units": "metric"}
+    response = requests.get(url, params=params)
+    if response.status_code == 200:
+        data = response.json()
+        temp = data["main"]["temp"]
+        desc = data["weather"][0]["description"]
+        return f"The weather in {city.title()} is {desc} with a temperature of {temp}°C."
+    else:
+        return "Sorry, I couldn't find the weather for that city."
+
+@app.route("/", methods=["GET", "POST"])
+def home():
+    weather = None
+    if request.method == "POST":
+        city = request.form["city"]
+        weather = get_weather(city)
+    return render_template_string(HTML, weather=weather)
+
+if __name__ == "__main__":
+    app.run(debug=True)
